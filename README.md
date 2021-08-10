@@ -5,6 +5,7 @@
 The project is to implement a registry using an ERC1155 or ERC721 template from OpenZeppelin.
 
 The registry should allow for the following:
+
 - Allow user to register [IPFS hash](https://docs.ipfs.io/concepts/hashing/) of some underlying document or folder as a new NFT.
 - Allow user to register a “service” that has a name and points to a collection of NFTs and a single address of an EOA.
 - Has an execute function similar to the one in [ERC725X](https://eips.ethereum.org/EIPS/eip-725) plus an additional argument which is the “service” name. This function checks that the tx it receives is signed by the EOA which is registered for the service and then makes the contract to contract call specified.
