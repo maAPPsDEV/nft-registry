@@ -35,7 +35,7 @@ contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
    * @param name  - The service name
    * @param owner - The service owner
    */
-  event ServiceRegistered(string indexed name, address indexed owner);
+  event ServiceRegistered(string name, address indexed owner);
 
   /**
    * @dev Occurs when a new service is unregistered.
@@ -43,7 +43,7 @@ contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
    * @param name  - The service name
    * @param owner - The service owner
    */
-  event ServiceUnregistered(string indexed name, address indexed owner);
+  event ServiceUnregistered(string name, address indexed owner);
 
   /**
    * @dev Occurs when a token is used for a service.
@@ -350,7 +350,7 @@ contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
     // build a prefixed hash to mimic the behavior of eth_sign.
     message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", message));
 
-    // recover signer
+    // split signature
     uint8 v;
     bytes32 r;
     bytes32 s;
@@ -361,10 +361,24 @@ contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
       s := mload(add(signature, 64))
       // final byte (first byte of the next 32 bytes).
       v := byte(0, mload(add(signature, 96)))
-    }
-    require(uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, "ECDSA: invalid signature 's' value");
-    require(v == 27 || v == 28, "ECDSA: invalid signature 'v' value");
 
+      // EIP-2 still allows signature malleability for ecrecover(). Remove this possibility and make the signature
+      // unique. Appendix F in the Ethereum Yellow paper (https://ethereum.github.io/yellowpaper/paper.pdf), defines
+      // the valid range for s in (281): 0 < s < secp256k1n ÷ 2 + 1, and for v in (282): v ∈ {27, 28}. Most
+      // signatures from current libraries generate a unique signature with an s-value in the lower half order.
+      //
+      // If your library generates malleable signatures, such as s-values in the upper range, calculate a new s-value
+      // with 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141 - s1 and flip v from 27 to 28 or
+      // vice versa. If your library also generates signatures with 0/1 for v instead 27/28, add 27 to v to accept
+      // these malleable signatures as well.
+      if gt(s, 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) {
+        s := sub(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141, s)
+      }
+      if or(eq(v, 0), eq(v, 1)) {
+        v := add(v, 27)
+      }
+    }
+    // recover signer
     signer = ecrecover(message, v, r, s);
 
     /// @notice Invalid signatures will produce an empty address.
