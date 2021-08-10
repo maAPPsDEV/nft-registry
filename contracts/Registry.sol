@@ -99,21 +99,6 @@ contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
     _;
   }
 
-  /**
-   * @dev Restricts the function to be called when the transaction has been signed by a valid signer.
-   * Increases the nonce of the signer on validation success.
-   */
-  modifier validSign(
-    bytes32 message,
-    bytes memory signature,
-    address signer
-  ) {
-    message = keccak256(abi.encodePacked(nonces[signer], message));
-    require(_recoverSigner(message, signature) == signer, "VRT: Invalid signer");
-    nonces[signer]++;
-    _;
-  }
-
   /* Public Functions */
   /**
    * @dev Registers a service and set the caller to the owner.
@@ -129,7 +114,8 @@ contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
     string calldata name,
     bytes calldata signature,
     address signer
-  ) external onlyOwner lengthedString(name, 32) validSign(keccak256(abi.encodePacked(name)), signature, signer) {
+  ) external onlyOwner lengthedString(name, 32) {
+    _verifySign(keccak256(abi.encodePacked(name)), signature, signer);
     require(!_serviceExists(name), "VRT: Service already exist");
 
     services[name].owner = signer;
@@ -150,7 +136,8 @@ contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
     string calldata name,
     bytes calldata signature,
     address signer
-  ) external onlyOwner validSign(keccak256(abi.encodePacked(name)), signature, signer) {
+  ) external onlyOwner {
+    _verifySign(keccak256(abi.encodePacked(name)), signature, signer);
     require(_serviceExists(name), "VRT: Service not found");
     Service storage service = services[name];
     address owner = service.owner;
@@ -183,7 +170,8 @@ contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
     bytes32 tokenId,
     bytes calldata signature,
     address signer
-  ) public onlyOwner validSign(keccak256(abi.encodePacked(to, tokenId)), signature, signer) {
+  ) public onlyOwner {
+    _verifySign(keccak256(abi.encodePacked(to, tokenId)), signature, signer);
     _safeMint(to, tokenId.toUint());
   }
 
@@ -204,7 +192,8 @@ contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
     string calldata serviceName,
     bytes calldata signature,
     address signer
-  ) external onlyOwner validSign(keccak256(abi.encodePacked(to, tokenId, serviceName)), signature, signer) {
+  ) external onlyOwner {
+    _verifySign(keccak256(abi.encodePacked(to, tokenId, serviceName)), signature, signer);
     require(_serviceExists(serviceName), "VRT: Service not found");
 
     _safeMint(to, tokenId.toUint());
@@ -225,7 +214,8 @@ contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
     bytes32 tokenId,
     bytes calldata signature,
     address signer
-  ) external onlyOwner validSign(keccak256(abi.encodePacked(tokenId)), signature, signer) {
+  ) external onlyOwner {
+    _verifySign(keccak256(abi.encodePacked(tokenId)), signature, signer);
     uint256 uId = tokenId.toUint();
     require(_exists(uId), "VRT: Token not found");
     require(ownerOf(uId) == signer, "VRT: No permission");
@@ -257,7 +247,8 @@ contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
     string calldata serviceName,
     bytes calldata signature,
     address signer
-  ) external onlyOwner validSign(keccak256(abi.encodePacked(tokenId, serviceName)), signature, signer) {
+  ) external onlyOwner {
+    _verifySign(keccak256(abi.encodePacked(tokenId, serviceName)), signature, signer);
     require(_serviceExists(serviceName), "VRT: Service not found");
     uint256 uId = tokenId.toUint();
     require(_exists(uId), "VRT: Token not found");
@@ -281,7 +272,8 @@ contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
     string calldata serviceName,
     bytes calldata signature,
     address signer
-  ) external onlyOwner validSign(keccak256(abi.encodePacked(tokenId, serviceName)), signature, signer) {
+  ) external onlyOwner {
+    _verifySign(keccak256(abi.encodePacked(tokenId, serviceName)), signature, signer);
     require(_serviceExists(serviceName), "VRT: Service not found");
     uint256 uId = tokenId.toUint();
     require(_exists(uId), "VRT: Token not found");
@@ -311,7 +303,8 @@ contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
     string calldata serviceName,
     bytes calldata signature,
     address signer
-  ) external payable onlyOwner validSign(keccak256(abi.encodePacked(operation, to, value, data, serviceName)), signature, signer) {
+  ) external payable onlyOwner {
+    _verifySign(keccak256(abi.encodePacked(operation, to, value, data, serviceName)), signature, signer);
     require(services[serviceName].owner == signer, "VRT: No permission");
 
     // build error data
@@ -329,6 +322,20 @@ contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
   }
 
   /* Private Functions */
+  /**
+   * @dev Verify if the transaction has been signed by a valid signer.
+   * Increases the nonce of the signer on validation success.
+   */
+  function _verifySign(
+    bytes32 message,
+    bytes memory signature,
+    address signer
+  ) private {
+    message = keccak256(abi.encodePacked(nonces[signer], message));
+    require(_recoverSigner(message, signature) == signer, "VRT: Invalid signer");
+    nonces[signer]++;
+  }
+
   /**
    * @dev Recovers the signer of the transaction.
    * Reverts if invalid signature was provided.
@@ -355,11 +362,8 @@ contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
       // final byte (first byte of the next 32 bytes).
       v := byte(0, mload(add(signature, 96)))
     }
-    // require(
-    //     uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0,
-    //     "ECDSA: invalid signature 's' value"
-    // );
-    // require(v == 27 || v == 28, "ECDSA: invalid signature 'v' value");
+    require(uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, "ECDSA: invalid signature 's' value");
+    require(v == 27 || v == 28, "ECDSA: invalid signature 'v' value");
 
     signer = ecrecover(message, v, r, s);
 
