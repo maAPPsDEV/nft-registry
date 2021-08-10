@@ -23,7 +23,7 @@ import "./libs/Bytes32.sol";
  * Accounts must provide the signature and signer, but it doesn't implement EIP-712.
  * Thus, accounts must provide the transaction message configured based on the each individual function implementation.
  *
- * @notice Token has multi to multi polymorphic relationship to Service.
+ * @notice Token has many to many relationship to Service.
  */
 contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
   /* Constructor */
@@ -69,7 +69,7 @@ contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
   uint256 private constant OPERATION_CREATE = 3;
 
   /* Libraries */
-  /// @notice Use libraries to handle multi to multi relationship.
+  /// @notice Use libraries to handle many to many relationship.
   using EnumerableSet for EnumerableSet.Bytes32Set;
   using String for string;
   using Bytes32 for bytes32;
