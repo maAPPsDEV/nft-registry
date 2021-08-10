@@ -51,7 +51,7 @@ contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
    * @param tokenId     - The token id
    * @param serviceName - The service name
    */
-  event TokenUsed(bytes32 indexed tokenId, string indexed serviceName);
+  event TokenUsed(bytes32 indexed tokenId, string serviceName);
 
   /**
    * @dev Occurs when a token is unused for a service.
@@ -59,7 +59,7 @@ contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
    * @param tokenId     - The token id
    * @param serviceName - The service name
    */
-  event TokenUnused(bytes32 indexed tokenId, string indexed serviceName);
+  event TokenUnused(bytes32 indexed tokenId, string serviceName);
 
   /* Constancs */
   /// @dev The external operation types.
@@ -132,7 +132,7 @@ contract Registry is ERC721("Valory Registry", "VRT"), Ownable {
    * @param signature   - The signature
    * @param signer      - The signer of the transaction
    */
-  function unregisterSerivce(
+  function unregisterService(
     string calldata name,
     bytes calldata signature,
     address signer
